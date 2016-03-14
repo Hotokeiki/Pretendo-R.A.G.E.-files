@@ -1,0 +1,11 @@
+> Program Memory Access: PROGMEM
+-----------------------------------------------------------------------------------------------------------------------
+All regular variables are saved into SRAM by default, const variables are saved into Flash and copied into SRAM by default.
+So, use PROGMEM to only save the variables into Flash.
+
+https://www.arduino.cc/en/Reference/PROGMEM
+
+#include <avr/pgmspace.h>
+
+const static unsigned char Red_X_bulk[5][5] PROGMEM = Array[] = {data0, data1, data3...};
+-----------------------------------------------------------------------------------------------------------------------
