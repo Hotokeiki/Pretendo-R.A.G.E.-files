@@ -17,18 +17,13 @@
  * The Microchip MCP4901 DAC, and LM386 Audio Op-Amp
  * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-// AF: #include <Adafruit_GFX.h>    // Core graphics library
-// AF: #include <Adafruit_ST7735.h> // Hardware-specific library
 #include <SPI.h>
-//#include <SD.h>
-
 #include <avr/pgmspace.h>
-
-#include <PDQ_GFX.h>      // PDQ: Core graphics library
+#include <PDQ_GFX.h>		// PDQ: Core graphics library
 #include "PDQ_ST7735_config.h"  // PDQ: ST7735 pins and other setup for this sketch
-#include <PDQ_ST7735.h>     // PDQ: Hardware-specific driver library
+#include <PDQ_ST7735.h>		// PDQ: Hardware-specific driver library
 
-PDQ_ST7735 tft;   //create LCD object (using pins in "PDQ_ST7735_config.h")
+PDQ_ST7735 tft;			//create LCD object (using pins in "PDQ_ST7735_config.h")
 
 /* TFT display and SD card will share the hardware SPI interface.
  * Hardware SPI pins are specific to the Arduino board type and
@@ -36,18 +31,11 @@ PDQ_ST7735 tft;   //create LCD object (using pins in "PDQ_ST7735_config.h")
  * Duemilanove, etc., pin 11 = MOSI, pin 12 = MISO, pin 13 = SCK.
  */
 
-// #define TFT_CS  10  // Chip select line for TFT display
-// #define TFT_RST  9  // Reset line for TFT (or see below...)
-// #define TFT_DC   8  // Data/command line for TFT
-
-// #define SD_CS    4  // Chip select line for SD card
-
 #define SD_CS      47
 #define DAC_CS     46
 #define TFT_CS     53
 #define TFT_RST    49
 #define TFT_DC     48  //use these for mega2560
-
 // Screen Resolution
 #define MAX_TFT_X           160
 #define MAX_TFT_Y           128
@@ -59,7 +47,8 @@ PDQ_ST7735 tft;   //create LCD object (using pins in "PDQ_ST7735_config.h")
 #define COMP_Y              (MAX_TFT_Y / MULT_Y)
 #define MAX_SPRITE_FRAMES   10
 
-/* Button pins. (NOTE: These should be on one 
+/* Button pins. REPLACE WITH PORT POLLING
+ * (NOTE: These should be on one 
  * port so that their state can be transferred
  * into a register rapidly)
  */
@@ -75,25 +64,18 @@ PDQ_ST7735 tft;   //create LCD object (using pins in "PDQ_ST7735_config.h")
 #define Blu   0x03
 #define Red   0xE0
 #define Grn   0x1C
-
 #define Ylw   0xFC
 #define Vio   0xC3
 #define Cyn   0x1B
 #define Org   0xF4
 #define Brn   0x6C
-
 #define Blk   0x00
 #define Wht   0xFF
 #define LGy   0x92	// Light Gray
 #define DGy   0x49	// Dark Gray
+#define Inv   0x24 	// defined invisible color for testing
 
-#define Inv   0x24  // defined invisible color for testing
-
-// Use this reset pin for the shield!
-//#define TFT_RST  0  // you can also connect this to the Arduino reset!
-
-// AF: Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
-
+// Defunct code for the circle sprite
 int sp_x = 80;
 int sp_y = 64;
 
@@ -101,13 +83,17 @@ int b_reg = 0; //button poll register
 
 int b_x, b_y, b_act;
 
-int b_reg_p = 0;  //previous poll compare register
-int dir = 0; //determines ball direction
+int b_reg_p = 0; 	//previous poll compare register
+int dir = 0;		//determines ball direction
 
+// DEFUNCT
 int dir_lf, dir_rt, dir_up, dir_dn; // which button is pressed
 
-// BITMAP structures
+#define TIMER_ISR_FIRED   1
+unsigned int Status = 0;  // Keeps track of bit flags
 
+// BITMAP structures
+// Change to #ENUM?
 #define BMP_ATTR_NO_INVISIBLE   0x80
 #define BMP_ATTR_DRAW_DIR_MASK  0x03
 #define BMP_ATTR_DRAW_DIR_UP    0x00
@@ -581,10 +567,6 @@ const static unsigned char mountain_bulk[204][64] PROGMEM = {
   {0x96, 0xB7, 0xB6, 0x96, 0xB6, 0xB7, 0xDB, 0xDB, 0xB6, 0xB6, 0xB6, 0xDB, 0xDB, 0xDB, 0xDB, 0xB6, 0xDB, 0xFF, 0xDB, 0xB6, 0xB6, 0xDB, 0xFF, 0xDA, 0xFB, 0xDA, 0xFB, 0xDB, 0x92, 0x72, 0x93, 0x93, 0x93, 0x97, 0x97, 
     0x4A, 0x4A, 0x4E, 0x72, 0x93, 0x6E, 0x6E, 0x25, 0x01, 0x01, 0x01, 0x01, 0x01, 0x25, 0x25, 0x25, 0x25, 0x05, 0x25, 0x25, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x25, 0x01}};
 
-#define TIMER_ISR_FIRED   1
-
-unsigned int Status = 0;  // Keeps track of bit flags
-
 BITMAP mountain = {204, 64, 0x01, BMP_ATTR_NO_INVISIBLE | BMP_ATTR_DRAW_DIR_UP, &mountain_bulk[0][0]};
 
 TILE start_tile = {&mountain, &start_tile, &start_tile, &start_tile, &start_tile};
@@ -603,56 +585,6 @@ const static unsigned char Sword_NE_bulk[5][5] PROGMEM =    {{Blu, Inv, Blu, Inv
                                                              {Inv, Inv, Inv, LGy, Inv},
                                                              {Inv, Inv, Inv, Inv, LGy}};
 
-// Red X and +
-const static unsigned char Red_X_bulk[5][5] PROGMEM =   {{Red, Inv, Inv, Inv, Red},
-                                                         {Inv, Red, Inv, Red, Inv},
-                                                         {Inv, Inv, Red, Inv, Inv},
-                                                         {Inv, Red, Inv, Red, Inv},
-                                                         {Red, Inv, Inv, Inv, Red}};
-                                                         
-const static unsigned char Red_Cross_bulk[5][5] PROGMEM =   {{Inv, Inv, Red, Inv, Inv},
-                                                             {Inv, Inv, Red, Inv, Inv},
-                                                             {Red, Red, Red, Red, Red},
-                                                             {Inv, Inv, Red, Inv, Inv},
-                                                             {Inv, Inv, Red, Inv, Inv}};
-
-// Weird jumping jacks patterns
-const static unsigned char Red_dn_bulk[4][4] PROGMEM =  {{Inv, Red, Red, Inv},
-                                                         {Inv, Red, Red, Inv},
-                                                         {Inv, Red, Red, Inv},
-                                                         {Inv, Red, Red, Inv}};
-const static unsigned char Red_x_bulk[4][4] PROGMEM =   {{Red, Inv, Inv, Red},
-                                                         {Inv, Red, Red, Inv},
-                                                         {Inv, Red, Red, Inv},
-                                                         {Red, Inv, Inv, Red}};
-const static unsigned char Red_up_bulk[4][4] PROGMEM =  {{Inv, Inv, Inv, Inv},
-                                                         {Red, Red, Red, Red},
-                                                         {Red, Red, Red, Red},
-                                                         {Inv, Inv, Inv, Inv}};
-                                                                                                                  
-const static unsigned char Blue_dn_bulk[4][4] PROGMEM = {{Inv, Blu, Blu, Inv},
-                                                         {Inv, Blu, Blu, Inv},
-                                                         {Inv, Blu, Blu, Inv},
-                                                         {Inv, Blu, Blu, Inv}};
-const static unsigned char Blue_x_bulk[4][4] PROGMEM =  {{Blu, Inv, Inv, Blu},
-                                                         {Inv, Blu, Blu, Inv},
-                                                         {Inv, Blu, Blu, Inv},
-                                                         {Blu, Inv, Inv, Blu}};
-const static unsigned char Blue_up_bulk[4][4] PROGMEM = {{Inv, Inv, Inv, Inv},
-                                                         {Blu, Blu, Blu, Blu},
-                                                         {Blu, Blu, Blu, Blu},
-                                                         {Inv, Inv, Inv, Inv}};
-														 
-//BITMAP sprite1 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_UP, &Red_X_bulk[0][0]};
-//BITMAP sprite2 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_UP, &Red_Cross_bulk[0][0]};
-
-//BITMAP sprite1 = {4, 4, Inv, BMP_ATTR_DRAW_DIR_UP, &Red_up_bulk[0][0]};
-//BITMAP sprite2 = {4, 4, Inv, BMP_ATTR_DRAW_DIR_UP, &Red_x_bulk[0][0]};
-//BITMAP sprite3 = {4, 4, Inv, BMP_ATTR_DRAW_DIR_UP, &Red_dn_bulk[0][0]};
-//BITMAP sprite4 = {4, 4, Inv, BMP_ATTR_DRAW_DIR_UP, &Blue_up_bulk[0][0]};
-//BITMAP sprite5 = {4, 4, Inv, BMP_ATTR_DRAW_DIR_UP, &Blue_x_bulk[0][0]};
-//BITMAP sprite6 = {4, 4, Inv, BMP_ATTR_DRAW_DIR_UP, &Blue_dn_bulk[0][0]};
-
 BITMAP sprite8 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_UP, &Sword_N_bulk[0][0]};
 BITMAP sprite7 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_UP, &Sword_NE_bulk[0][0]};
 BITMAP sprite6 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_CCW, &Sword_N_bulk[0][0]};
@@ -662,100 +594,87 @@ BITMAP sprite3 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_DN, &Sword_NE_bulk[0][0]};
 BITMAP sprite2 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_CW, &Sword_N_bulk[0][0]};
 BITMAP sprite1 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_CW, &Sword_NE_bulk[0][0]};
 
-/*
-BITMAP sprite8 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_DN, &Sword_N_bulk[0][0]};
-BITMAP sprite7 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_DN, &Sword_NE_bulk[0][0]};
-BITMAP sprite6 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_DN, &Sword_E_bulk[0][0]};
-BITMAP sprite5 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_DN, &Sword_SE_bulk[0][0]};
-BITMAP sprite4 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_DN, &Sword_S_bulk[0][0]};
-BITMAP sprite3 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_DN, &Sword_SW_bulk[0][0]};
-BITMAP sprite2 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_DN, &Sword_W_bulk[0][0]};
-BITMAP sprite1 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_DN, &Sword_NW_bulk[0][0]};
-*/
-
-//SPRITE mySprite = {{&sprite1 , &sprite2, NULL, NULL, NULL}, 0, 5, 0, 1, 0, 0xFF, 0, 0, -128, 127, -128, 127};
-//SPRITE mySprite = {{&sprite2 , &sprite1, &sprite5, &sprite4, NULL}, 0, 20, 0, 1, 0, 0xFF, 0, 0, -128, 127, -128, 127};
 SPRITE mySprite = {{&sprite1 , &sprite2, &sprite3 , &sprite4, &sprite5 , &sprite6, &sprite7 , &sprite8, NULL,}, //*Array[MAX_SPRITE_FRAMES]
-                    BEHAVE_DRIFT_LT, //behavior
-                    BEHAVE_STATE_INIT, //behaveState
-                    0,      //curBitMap
-                    5,      //updateDelay
-                    0,      //curUpdateDelayCount
-                    1,      //movementDelay
-                    0,      //curMovementDelayCount
-                    0xFF,   //equipIndex
-                    50,     //top
-                    0,      //left
-                    -2,   //minX
-                    78,    //maxX
-                    -128,   //minY
-                    127};   //maxY
+                    BEHAVE_DRIFT_LT,	//behavior
+                    BEHAVE_STATE_INIT,	//behaveState
+                    0,      		//curBitMap
+                    5,      		//updateDelay
+                    0,      		//curUpdateDelayCount
+                    1,      		//movementDelay
+                    0,      		//curMovementDelayCount
+                    0xFF,   		//equipIndex
+                    50,     		//top
+                    0,      		//left
+                    -2,   		//minX
+                    78,    		//maxX
+                    -128,   		//minY
+                    127};   		//maxY
 
 
 SPRITE mySprite2 = {{&sprite1 , &sprite2, &sprite3 , &sprite4, &sprite5 , &sprite6, &sprite7 , &sprite8, NULL,}, //*Array[MAX_SPRITE_FRAMES]
-                    BEHAVE_DRIFT_DN, //behavior
-                    BEHAVE_STATE_INIT, //behaveState
-                    3,      //curBitMap
-                    5,      //updateDelay
-                    0,      //curUpdateDelayCount
-                    1,      //movementDelay
-                    0,      //curMovementDelayCount
-                    0xFF,   //equipIndex
-                    50,     //top
-                    26,     //left
-                    -2,   //minX
-                    78,    //maxX
-                    -2,   //minY
-                    64};   //maxY
+                    BEHAVE_DRIFT_DN,	//behavior
+                    BEHAVE_STATE_INIT,	//behaveState
+                    3,			//curBitMap
+                    5,      		//updateDelay
+                    0,      		//curUpdateDelayCount
+                    1,      		//movementDelay
+                    0,      		//curMovementDelayCount
+                    0xFF,   		//equipIndex
+                    50,     		//top
+                    26,     		//left
+                    -2,   		//minX
+                    78, 		//maxX
+                    -2,   		//minY
+                    64};   		//maxY
 
 SPRITE mySprite3 = {{&sprite1 , &sprite2, &sprite3 , &sprite4, &sprite5 , &sprite6, &sprite7 , &sprite8, NULL,}, //*Array[MAX_SPRITE_FRAMES]
-                    BEHAVE_DRIFT_UP, //behavior
-                    BEHAVE_STATE_INIT, //behaveState
-                    5,      //curBitMap
-                    5,      //updateDelay
-                    0,      //curUpdateDelayCount
-                    1,      //movementDelay
-                    0,      //curMovementDelayCount
-                    0xFF,   //equipIndex
-                    50,     //top
-                    52,     //left
-                    -2,   //minX
-                    78,    //maxX
-                    -2,   //minY
-                    64};   //maxY
+                    BEHAVE_DRIFT_UP,	//behavior
+                    BEHAVE_STATE_INIT,	//behaveState
+                    5,      		//curBitMap
+                    5,      		//updateDelay
+                    0,      		//curUpdateDelayCount
+                    1,      		//movementDelay
+                    0,      		//curMovementDelayCount
+                    0xFF,   		//equipIndex
+                    50,     		//top
+                    52,     		//left
+                    -2,   		//minX
+                    78, 		//maxX
+                    -2,   		//minY
+                    64};   		//maxY
 
 
 SPRITE mySprite4 = {{&sprite1 , &sprite2, &sprite3 , &sprite4, &sprite5 , &sprite6, &sprite7 , &sprite8, NULL,}, //*Array[MAX_SPRITE_FRAMES]
-                    BEHAVE_CIRCLE_CW, //behavior
-                    BEHAVE_STATE_INIT, //behaveState
-                    5,      //curBitMap
-                    5,      //updateDelay
-                    0,      //curUpdateDelayCount
-                    1,      //movementDelay
-                    0,      //curMovementDelayCount
-                    0xFF,   //equipIndex
-                    20,     //top
-                    10,     //left
-                    20,   //minX
-                    50,   //maxX
-                    10,   //minY
-                    40};  //maxY
+                    BEHAVE_CIRCLE_CW, 	//behavior
+                    BEHAVE_STATE_INIT, 	//behaveState
+                    5,      		//curBitMap
+                    5,      		//updateDelay
+                    0,      		//curUpdateDelayCount
+                    1,      		//movementDelay
+                    0,      		//curMovementDelayCount
+                    0xFF,   		//equipIndex
+                    20,     		//top
+                    10,     		//left
+                    20,   		//minX
+                    50,   		//maxX
+                    10,   		//minY
+                    40};  		//maxY
                     
   SPRITE mySprite5 = {{&sprite8 , &sprite7, &sprite6 , &sprite5, &sprite4 , &sprite3, &sprite2 , &sprite1, NULL,}, //*Array[MAX_SPRITE_FRAMES]
-                    BEHAVE_NO_MOVE, //behavior
-                    BEHAVE_STATE_INIT, //behaveState
-                    5,      //curBitMap
-                    5,      //updateDelay
-                    0,      //curUpdateDelayCount
-                    1,      //movementDelay
-                    0,      //curMovementDelayCount
-                    0xFF,   //equipIndex
-                    25,     //top
-                    35,     //left
-                    20,   //minX
-                    70,   //maxX
-                    10,   //minY
-                    50};  //maxY
+                    BEHAVE_NO_MOVE, 	//behavior
+                    BEHAVE_STATE_INIT, 	//behaveState
+                    5,      		//curBitMap
+                    5,      		//updateDelay
+                    0,      		//curUpdateDelayCount
+                    1,      		//movementDelay
+                    0,      		//curMovementDelayCount
+                    0xFF,   		//equipIndex
+                    25,     		//top
+                    35,     		//left
+                    20,   		//minX
+                    70,   		//maxX
+                    10,   		//minY
+                    50};  		//maxY
 
 SPRITE mySprite6 = {{&sprite1 , &sprite2, &sprite3 , &sprite4, &sprite5 , &sprite6, &sprite7 , &sprite8, NULL,}, //*Array[MAX_SPRITE_FRAMES]
                     BEHAVE_BOUNCE_HORIZ, //behavior
@@ -774,46 +693,38 @@ SPRITE mySprite6 = {{&sprite1 , &sprite2, &sprite3 , &sprite4, &sprite5 , &sprit
                     64};   //maxY
 
 SPRITE mySprite7 = {{&sprite1 , &sprite2, &sprite3 , &sprite4, &sprite5 , &sprite6, &sprite7 , &sprite8, NULL,}, //*Array[MAX_SPRITE_FRAMES]
-                    BEHAVE_BOUNCE_VERT, //behavior
-                    BEHAVE_STATE_INIT, //behaveState
-                    5,      //curBitMap
-                    5,      //updateDelay
-                    0,      //curUpdateDelayCount
-                    1,      //movementDelay
-                    0,      //curMovementDelayCount
-                    0xFF,   //equipIndex
-                    0,     //top
-                    0,     //left
-                    0,   //minX
-                    80,    //maxX
-                    0,   //minY
-                    64};   //maxY
+                    BEHAVE_BOUNCE_VERT,	//behavior
+                    BEHAVE_STATE_INIT,	//behaveState
+                    5,      		//curBitMap
+                    5,      		//updateDelay
+                    0,      		//curUpdateDelayCount
+                    1,      		//movementDelay
+                    0,      		//curMovementDelayCount
+                    0xFF,   		//equipIndex
+                    0,     		//top
+                    0,     		//left
+                    0,   		//minX
+                    80,    		//maxX
+                    0,   		//minY
+                    64};   		//maxY
 
 TILE *CurTile = NULL;
 
-//ANIMATED_SPRITE Sprite = {{&mybmp, &mybmp, &mybmp, NULL}, 0};
-
-int16_t sprite1_x = 0;
-int16_t sprite1_inc = 1;
-
 /***************************SETUP*************************************/
+
 void setup(void) {
-	// CHANGE THIS: Put pins on one port, and use PORT[X] = [binary number]
+  // CHANGE THIS: Put pins on one port, and use PORT[X] = [binary number]
   pinMode(b_up, INPUT);
   pinMode(b_dn, INPUT);
   pinMode(b_lf, INPUT);
   pinMode(b_rt, INPUT);
   pinMode(b_a, INPUT);
-  pinMode(b_b, INPUT); //BUTTON INPUT CONFIG
+  pinMode(b_b, INPUT);	//BUTTON INPUT CONFIG
   pinMode(SD_CS, OUTPUT);
   pinMode(DAC_CS, OUTPUT);
   digitalWrite(DAC_CS, HIGH);
 
   Serial.begin(9600);
-
-  // Use this initializer if you're using a 1.8" TFT
-  // AF: tft.initR(INITR_BLACKTAB);
-
 
 #define ST7735_RST_PIN    49   //use these for mega2560
 
@@ -827,13 +738,11 @@ void setup(void) {
 
   tft.begin();            // use instead of tft.initR(INITR_BLACKTAB) to initialize display for PDQ library
 
-  //drawBackGroundA(&mountain); // draw the background
-  newTile(&start_tile);
+  newTile(&start_tile); // draw the background
 
-    
   cli();		//? stop interrupts
 
-//set timer0 interrupt at 60Hz
+  //set timer0 interrupt at 60Hz
   TCCR0A = 0;// set entire TCCR0A register to 0
   TCCR0B = 0;// same for TCCR0B
   TCNT0  = 0;//initialize counter value to 0
@@ -846,7 +755,7 @@ void setup(void) {
   // enable timer compare interrupt
   TIMSK0 |= (1 << OCIE0A);
 
-sei();//allow interrupts
+  sei();  //allow interrupts
 }
 
 #define butt_lf   0x01
@@ -856,9 +765,9 @@ sei();//allow interrupts
 #define butt_a    0x10
 #define butt_b    0x20
 
-void loop() {
- //NOT SURE WHAT GOES HERE, PROBABLY SOME GAME LOGIC
- 
+/* * * * * * * * * * * * * Main game loop * * * * * * * * * * * * * */
+void loop()
+{
   if (Status & TIMER_ISR_FIRED)
   {
     Status &= ~TIMER_ISR_FIRED;    
@@ -869,11 +778,12 @@ void loop() {
     updateSprite(&mySprite5);
     updateSprite(&mySprite6);
     updateSprite(&mySprite7);
-
   }
 }
 
-//THIS ISR MEDIATES FRAME REDRAW (AND MAYBE GAME LOGIC?) AND BUTTON POLL (both at ~60Hz, so same interrupt is feasible)
+/* * * * * * * * * * * * * FRAME REDRAW MEDIATION * * * * * * * * * * * * */
+// AND MAYBE GAME LOGIC AND BUTTON POLL (both at ~60Hz, so same interrupt is feasible)
+// REPLACE WITH PORT POLL
 ISR(TIMER0_COMPA_vect)
 {
   int x;
@@ -901,77 +811,28 @@ ISR(TIMER0_COMPA_vect)
       if (b_reg_y == butt_dn) y = -1;
       else if (b_reg_y == butt_up) y = 1;
       else y = 0;
-    
-    
-        //tft.drawCircle(sp_y, sp_x, 10 , ST7735_BLACK);
-    
-        sp_x += x;
-        sp_y += y;
-        
-        if(sp_x > 170) sp_x = -10; 
-        if(sp_x < -10) sp_x = 170; 
-        if(sp_y > 138) sp_y = -10;     
-        if(sp_y < -10) sp_y = 138; 
-      
-        //tft.drawCircle(sp_y, sp_x, 10, ST7735_YELLOW);
-        //drawSprite(76, 0, &sprite1);
     }
 
   Status |= TIMER_ISR_FIRED;
 }
 
-//Draws a Pixel on the Compressed 8 bit screen
-//x - Compressed 8 bit screen location
-//y - Compressed 8 bit screen location
-//color8 - Compressed 8 bit color
+// Draws a Pixel on the Compressed 8 bit screen
+// x - Compressed 8 bit screen location
+// y - Compressed 8 bit screen location
+// color8 - Compressed 8 bit color
 void drawPixel(int16_t x, int16_t y, uint8_t color8)
 {
+  // Convert to 24 bit color for TFT connectivity
   uint16_t color16 = ((uint16_t)(color8 & 0xE0) << 8) | ((uint16_t)(color8 & 0x1C) << 6) | ((uint16_t)(color8 & 0x03) << 3); //RRRG GGBB  to RRR0 0GGG 000B B000
   uint16_t newx = (int16_t)((x + 0) * MULT_X);
   uint16_t newy = (int16_t)((y + 0) * MULT_Y);  
-
+  // Determine if sprite is on screen
   if ((newx >= 0) && (newx < MAX_TFT_X) && (newy >= 0) && (newy < MAX_TFT_Y))
   {
+    // draw sprite
     tft.fillRect((MAX_TFT_Y - 1) - newy, newx, (int16_t) MULT_X, (int16_t) MULT_Y, color16); //Swapping x and y to rotate the screen
   }
 }
-/*
-void drawMovingSprite(int16_t x, int16_t y, int16_t inc, const BITMAP *BkgndPtr, const BITMAP *SpritePtr)
-{
-  uint16_t newx;
-  //uint16_t newy;
-  uint16_t i;
-  unsigned char color8;
-  
-  if (inc > 0)
-  {
-    newx = x + inc;
-    if (newx > 64 - SpritePtr->width)
-    {
-      newx = 64 - SpritePtr->width;
-      inc = -inc;
-    }
-  }
-  else
-  {
-    newx = x + inc;
-    if (newx <= 0)
-    {
-      newx = 0;
-      inc = -inc;
-    }
-   }
-   //drawSprite(newx, y, SpritePtr);
-
-   for (i = y; i < y + SpritePtr->height; i++)
-    {
-      color8 = pgm_read_byte_near(BkgndPtr->ptr + (x * BkgndPtr->height) + i);
-      drawPixel(x, i, color8);
-    }
-
-}
-
-*/
 
 void updateSprite(SPRITE *sprite_ptr)
 {
@@ -1199,7 +1060,7 @@ void updateSprite(SPRITE *sprite_ptr)
       }    
     }
   }
-
+  // redraw the newly exposed background
   if ((oldLeft != sprite_ptr->left) || (oldTop != sprite_ptr->top) || (oldBitMap != sprite_ptr->curBitMap))
   {
     replaceBackGround(oldLeft, oldTop, sprite_ptr->Array[oldBitMap]->width, sprite_ptr->Array[oldBitMap]->height, CurTile->BCKGND_ptr);
