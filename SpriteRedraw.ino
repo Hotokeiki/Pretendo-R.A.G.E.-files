@@ -1,26 +1,21 @@
-
-/***************************************************
-  This is a library for the Adafruit 1.8" SPI display.
-
-This library works with the Adafruit 1.8" TFT Breakout w/SD card
-  ----> http://www.adafruit.com/products/358
-The 1.8" TFT shield
-  ----> https://www.adafruit.com/product/802
-The 1.44" TFT breakout
-  ----> https://www.adafruit.com/product/2088
-as well as Adafruit raw 1.8" TFT display
-  ----> http://www.adafruit.com/products/618
-
-  Check out the links above for our tutorials and wiring diagrams
-  These displays use SPI to communicate, 4 or 5 pins are required to
-  interface (RST is optional)
-  Adafruit invests time and resources providing this open source code,
-  please support Adafruit and open-source hardware by purchasing
-  products from Adafruit!
-
-  Written by Limor Fried/Ladyada for Adafruit Industries.
-  MIT license, all text above must be included in any redistribution
- ****************************************************/
+/* * * * * * * * * * * * * * * * * * * * * * * * * *
+ * The Pretendo R.A.G.E. entertainment system:
+ * An open-source gaming design program based on the
+ * Arduino Mega (ATMEGA2560) microcontroller.
+ *
+ * This is the 2016 junior design project by the
+ * following students: Thaddeus Gulden, Christian
+ * Dickinson and Talen Phillips.
+ * 
+ * The project uses the following components:
+ *
+ * The Arduino Mega 2560 development kit
+ *
+ * Adafruit ST7735 TFT and the associated libraries:
+ *  ----> http://www.adafruit.com/products/358
+ * 
+ * The Microchip MCP4901 DAC, and LM386 Audio Op-Amp
+ * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 // AF: #include <Adafruit_GFX.h>    // Core graphics library
 // AF: #include <Adafruit_ST7735.h> // Hardware-specific library
@@ -35,30 +30,40 @@ as well as Adafruit raw 1.8" TFT display
 
 PDQ_ST7735 tft;   //create LCD object (using pins in "PDQ_ST7735_config.h")
 
-// TFT display and SD card will share the hardware SPI interface.
-// Hardware SPI pins are specific to the Arduino board type and
-// cannot be remapped to alternate pins.  For Arduino Uno,
-// Duemilanove, etc., pin 11 = MOSI, pin 12 = MISO, pin 13 = SCK.
-//#define TFT_CS  10  // Chip select line for TFT display
-//#define TFT_RST  9  // Reset line for TFT (or see below...)
-//#define TFT_DC   8  // Data/command line for TFT
+/* TFT display and SD card will share the hardware SPI interface.
+ * Hardware SPI pins are specific to the Arduino board type and
+ * cannot be remapped to alternate pins.  For Arduino Uno,
+ * Duemilanove, etc., pin 11 = MOSI, pin 12 = MISO, pin 13 = SCK.
+ */
 
-//#define SD_CS    4  // Chip select line for SD card
+// #define TFT_CS  10  // Chip select line for TFT display
+// #define TFT_RST  9  // Reset line for TFT (or see below...)
+// #define TFT_DC   8  // Data/command line for TFT
 
-#define SD_CS     47
+// #define SD_CS    4  // Chip select line for SD card
+
+#define SD_CS      47
 #define DAC_CS     46
 #define TFT_CS     53
 #define TFT_RST    49
-#define TFT_DC     48 //use these for mega2560
+#define TFT_DC     48  //use these for mega2560
 
+// Screen Resolution
 #define MAX_TFT_X           160
 #define MAX_TFT_Y           128
+// Resolution multiplier
 #define MULT_X              2
 #define MULT_Y              2
+// Effective Resolution
 #define COMP_X              (MAX_TFT_X / MULT_X)
 #define COMP_Y              (MAX_TFT_Y / MULT_Y)
 #define MAX_SPRITE_FRAMES   10
 
+/* Button pins. (NOTE: These should be on one 
+ * port so that their state can be transferred
+ * into a register rapidly)
+ */
+ 
 #define b_up    45
 #define b_dn    41
 #define b_lf    43
@@ -79,12 +84,12 @@ PDQ_ST7735 tft;   //create LCD object (using pins in "PDQ_ST7735_config.h")
 
 #define Blk   0x00
 #define Wht   0xFF
-#define LGy   0x92
-#define DGy   0x49
+#define LGy   0x92	// Light Gray
+#define DGy   0x49	// Dark Gray
 
 #define Inv   0x24  // defined invisible color for testing
 
-//Use this reset pin for the shield!
+// Use this reset pin for the shield!
 //#define TFT_RST  0  // you can also connect this to the Arduino reset!
 
 // AF: Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
@@ -165,6 +170,7 @@ struct SPRITE
     signed char maxY;  
 };
 
+// Mountain background bitmap
 const static unsigned char mountain_bulk[204][64] PROGMEM = {
   {0x96, 0xB7, 0xB6, 0x96, 0xB6, 0xB7, 0xDB, 0xDB, 0xB6, 0xB6, 0xB6, 0xDB, 0xDB, 0xDB, 0xDB, 0xB6, 0xDB, 0xFF, 0xDB, 0xB6, 0xB6, 0xDB, 0xFF, 0xDA, 0xFB, 0xDA, 0xFB, 0xDB, 0x92, 0x72, 0x93, 0x93, 0x93, 0x97, 0x97, 
     0x4A, 0x4A, 0x4E, 0x72, 0x93, 0x6E, 0x6E, 0x25, 0x01, 0x01, 0x01, 0x01, 0x01, 0x25, 0x25, 0x25, 0x25, 0x05, 0x25, 0x25, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x25, 0x01},
@@ -575,11 +581,15 @@ const static unsigned char mountain_bulk[204][64] PROGMEM = {
   {0x96, 0xB7, 0xB6, 0x96, 0xB6, 0xB7, 0xDB, 0xDB, 0xB6, 0xB6, 0xB6, 0xDB, 0xDB, 0xDB, 0xDB, 0xB6, 0xDB, 0xFF, 0xDB, 0xB6, 0xB6, 0xDB, 0xFF, 0xDA, 0xFB, 0xDA, 0xFB, 0xDB, 0x92, 0x72, 0x93, 0x93, 0x93, 0x97, 0x97, 
     0x4A, 0x4A, 0x4E, 0x72, 0x93, 0x6E, 0x6E, 0x25, 0x01, 0x01, 0x01, 0x01, 0x01, 0x25, 0x25, 0x25, 0x25, 0x05, 0x25, 0x25, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x25, 0x01}};
 
+#define TIMER_ISR_FIRED   1
+
+unsigned int Status = 0;  // Keeps track of bit flags
+
 BITMAP mountain = {204, 64, 0x01, BMP_ATTR_NO_INVISIBLE | BMP_ATTR_DRAW_DIR_UP, &mountain_bulk[0][0]};
 
 TILE start_tile = {&mountain, &start_tile, &start_tile, &start_tile, &start_tile};
 
-//Spinning sword 5x5
+//Spinning sword 5x5 diagonal and straight bitmaps (translated for each cardinal direction)
 
 const static unsigned char Sword_N_bulk[5][5] PROGMEM =     {{Inv, Inv, Inv, Inv, Inv},
                                                              {Inv, Blu, Inv, Inv, Inv},
@@ -592,43 +602,8 @@ const static unsigned char Sword_NE_bulk[5][5] PROGMEM =    {{Blu, Inv, Blu, Inv
                                                              {Blu, Inv, LGy, Inv, Inv},
                                                              {Inv, Inv, Inv, LGy, Inv},
                                                              {Inv, Inv, Inv, Inv, LGy}};
-/*
-const static unsigned char Sword_E_bulk[5][5] PROGMEM =     {{Inv, Inv, Blu, Inv, Inv},
-                                                             {Inv, Blu, Blu, Blu, Inv},
-                                                             {Inv, Inv, LGy, Inv, Inv},
-                                                             {Inv, Inv, LGy, Inv, Inv},
-                                                             {Inv, Inv, LGy, Inv, Inv}};
-                                                         
-const static unsigned char Sword_SE_bulk[5][5] PROGMEM =    {{Inv, Inv, Blu, Inv, Blu},
-                                                             {Inv, Inv, Inv, Blu, Inv},
-                                                             {Inv, Inv, LGy, Inv, Blu},
-                                                             {Inv, LGy, Inv, Inv, Inv},
-                                                             {LGy, Inv, Inv, Inv, Inv}};
 
-const static unsigned char Sword_S_bulk[5][5] PROGMEM =     {{Inv, Inv, Inv, Inv, Inv},
-                                                             {Inv, Inv, Inv, Blu, Inv},
-                                                             {LGy, LGy, LGy, Blu, Blu},
-                                                             {Inv, Inv, Inv, Blu, Inv},
-                                                             {Inv, Inv, Inv, Inv, Inv}};
-                                                         
-const static unsigned char Sword_SW_bulk[5][5] PROGMEM =    {{LGy, Inv, Inv, Inv, Inv},
-                                                             {Inv, LGy, Inv, Inv, Inv},
-                                                             {Inv, Inv, LGy, Inv, Blu},
-                                                             {Inv, Inv, Inv, Blu, Inv},
-                                                             {Inv, Inv, Blu, Inv, Blu}};
-
-const static unsigned char Sword_W_bulk[5][5] PROGMEM =     {{Inv, Inv, LGy, Inv, Inv},
-                                                             {Inv, Inv, LGy, Inv, Inv},
-                                                             {Inv, Inv, LGy, Inv, Inv},
-                                                             {Inv, Blu, Blu, Blu, Inv},
-                                                             {Inv, Inv, Blu, Inv, Inv}};
-                                                         
-const static unsigned char Sword_NW_bulk[5][5] PROGMEM =    {{Inv, Inv, Inv, Inv, LGy},
-                                                             {Inv, Inv, Inv, LGy, Inv},
-                                                             {Blu, Inv, LGy, Inv, Inv},
-                                                             {Inv, Blu, Inv, Inv, Inv},
-                                                             {Blu, Inv, Blu, Inv, Inv}};
-*/
+// Red X and +
 const static unsigned char Red_X_bulk[5][5] PROGMEM =   {{Red, Inv, Inv, Inv, Red},
                                                          {Inv, Red, Inv, Red, Inv},
                                                          {Inv, Inv, Red, Inv, Inv},
@@ -641,6 +616,7 @@ const static unsigned char Red_Cross_bulk[5][5] PROGMEM =   {{Inv, Inv, Red, Inv
                                                              {Inv, Inv, Red, Inv, Inv},
                                                              {Inv, Inv, Red, Inv, Inv}};
 
+// Weird jumping jacks patterns
 const static unsigned char Red_dn_bulk[4][4] PROGMEM =  {{Inv, Red, Red, Inv},
                                                          {Inv, Red, Red, Inv},
                                                          {Inv, Red, Red, Inv},
@@ -666,6 +642,7 @@ const static unsigned char Blue_up_bulk[4][4] PROGMEM = {{Inv, Inv, Inv, Inv},
                                                          {Blu, Blu, Blu, Blu},
                                                          {Blu, Blu, Blu, Blu},
                                                          {Inv, Inv, Inv, Inv}};
+														 
 //BITMAP sprite1 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_UP, &Red_X_bulk[0][0]};
 //BITMAP sprite2 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_UP, &Red_Cross_bulk[0][0]};
 
@@ -684,6 +661,7 @@ BITMAP sprite4 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_DN, &Sword_N_bulk[0][0]};
 BITMAP sprite3 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_DN, &Sword_NE_bulk[0][0]};
 BITMAP sprite2 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_CW, &Sword_N_bulk[0][0]};
 BITMAP sprite1 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_CW, &Sword_NE_bulk[0][0]};
+
 /*
 BITMAP sprite8 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_DN, &Sword_N_bulk[0][0]};
 BITMAP sprite7 = {5, 5, Inv, BMP_ATTR_DRAW_DIR_DN, &Sword_NE_bulk[0][0]};
@@ -761,7 +739,55 @@ SPRITE mySprite4 = {{&sprite1 , &sprite2, &sprite3 , &sprite4, &sprite5 , &sprit
                     20,   //minX
                     50,   //maxX
                     10,   //minY
-                    40};  //maxY                    
+                    40};  //maxY
+                    
+  SPRITE mySprite5 = {{&sprite8 , &sprite7, &sprite6 , &sprite5, &sprite4 , &sprite3, &sprite2 , &sprite1, NULL,}, //*Array[MAX_SPRITE_FRAMES]
+                    BEHAVE_NO_MOVE, //behavior
+                    BEHAVE_STATE_INIT, //behaveState
+                    5,      //curBitMap
+                    5,      //updateDelay
+                    0,      //curUpdateDelayCount
+                    1,      //movementDelay
+                    0,      //curMovementDelayCount
+                    0xFF,   //equipIndex
+                    25,     //top
+                    35,     //left
+                    20,   //minX
+                    70,   //maxX
+                    10,   //minY
+                    50};  //maxY
+
+SPRITE mySprite6 = {{&sprite1 , &sprite2, &sprite3 , &sprite4, &sprite5 , &sprite6, &sprite7 , &sprite8, NULL,}, //*Array[MAX_SPRITE_FRAMES]
+                    BEHAVE_BOUNCE_HORIZ, //behavior
+                    BEHAVE_STATE_INIT, //behaveState
+                    5,      //curBitMap
+                    5,      //updateDelay
+                    0,      //curUpdateDelayCount
+                    1,      //movementDelay
+                    0,      //curMovementDelayCount
+                    0xFF,   //equipIndex
+                    0,     //top
+                    0,     //left
+                    0,   //minX
+                    80,    //maxX
+                    0,   //minY
+                    64};   //maxY
+
+SPRITE mySprite7 = {{&sprite1 , &sprite2, &sprite3 , &sprite4, &sprite5 , &sprite6, &sprite7 , &sprite8, NULL,}, //*Array[MAX_SPRITE_FRAMES]
+                    BEHAVE_BOUNCE_VERT, //behavior
+                    BEHAVE_STATE_INIT, //behaveState
+                    5,      //curBitMap
+                    5,      //updateDelay
+                    0,      //curUpdateDelayCount
+                    1,      //movementDelay
+                    0,      //curMovementDelayCount
+                    0xFF,   //equipIndex
+                    0,     //top
+                    0,     //left
+                    0,   //minX
+                    80,    //maxX
+                    0,   //minY
+                    64};   //maxY
 
 TILE *CurTile = NULL;
 
@@ -770,7 +796,9 @@ TILE *CurTile = NULL;
 int16_t sprite1_x = 0;
 int16_t sprite1_inc = 1;
 
+/***************************SETUP*************************************/
 void setup(void) {
+	// CHANGE THIS: Put pins on one port, and use PORT[X] = [binary number]
   pinMode(b_up, INPUT);
   pinMode(b_dn, INPUT);
   pinMode(b_lf, INPUT);
@@ -803,7 +831,7 @@ void setup(void) {
   newTile(&start_tile);
 
     
-  cli();//stop interrupts
+  cli();		//? stop interrupts
 
 //set timer0 interrupt at 60Hz
   TCCR0A = 0;// set entire TCCR0A register to 0
@@ -830,14 +858,20 @@ sei();//allow interrupts
 
 void loop() {
  //NOT SURE WHAT GOES HERE, PROBABLY SOME GAME LOGIC
-}
+ 
+  if (Status & TIMER_ISR_FIRED)
+  {
+    Status &= ~TIMER_ISR_FIRED;    
+    updateSprite(&mySprite);
+    updateSprite(&mySprite2);
+    updateSprite(&mySprite3);
+    updateSprite(&mySprite4);
+    updateSprite(&mySprite5);
+    updateSprite(&mySprite6);
+    updateSprite(&mySprite7);
 
-#define butt_lf   0x01
-#define butt_rt   0x02
-#define butt_up   0x04
-#define butt_dn   0x08
-#define butt_a    0x10
-#define butt_b    0x20
+  }
+}
 
 //THIS ISR MEDIATES FRAME REDRAW (AND MAYBE GAME LOGIC?) AND BUTTON POLL (both at ~60Hz, so same interrupt is feasible)
 ISR(TIMER0_COMPA_vect)
@@ -883,10 +917,7 @@ ISR(TIMER0_COMPA_vect)
         //drawSprite(76, 0, &sprite1);
     }
 
-      updateSprite(&mySprite);
-      updateSprite(&mySprite2);
-      updateSprite(&mySprite3);
-      updateSprite(&mySprite4);   
+  Status |= TIMER_ISR_FIRED;
 }
 
 //Draws a Pixel on the Compressed 8 bit screen
@@ -1013,7 +1044,33 @@ void updateSprite(SPRITE *sprite_ptr)
           break;
         }
       break;
+      
+       case BEHAVE_BOUNCE_HORIZ:
+        switch(sprite_ptr->behaveState)
+        {
+          case BEHAVE_STATE_LT:
+            incX = -1;
+          break;
+          default: //BEHAVE_STATE_INIT, BEHAVE_STATE_RT
+            sprite_ptr->behaveState = BEHAVE_STATE_RT;
+            incX = 1;
+          break;
+        }
+        break;
 
+      case BEHAVE_BOUNCE_VERT:
+        switch(sprite_ptr->behaveState)
+        {
+          case BEHAVE_STATE_UP:
+            incY = 1;
+          break;          
+          default: //BEHAVE_STATE_INIT, BEHAVE_STATE_DN
+            sprite_ptr->behaveState = BEHAVE_STATE_DN;
+            incY = -1;
+          break;
+        }
+      break;
+      
       default:  //BEHAVE_NO_MOVE:
         //do nothing
       break;      
@@ -1115,6 +1172,30 @@ void updateSprite(SPRITE *sprite_ptr)
             break;
           }
         break;
+        
+        case BEHAVE_BOUNCE_HORIZ:      
+          switch(sprite_ptr->behaveState)
+          {
+            case BEHAVE_STATE_LT:
+              sprite_ptr->behaveState = BEHAVE_STATE_RT;
+            break;
+            case BEHAVE_STATE_RT:
+              sprite_ptr->behaveState = BEHAVE_STATE_LT;
+            break;            
+          }
+        break;
+
+        case BEHAVE_BOUNCE_VERT:      
+          switch(sprite_ptr->behaveState)
+          {
+            case BEHAVE_STATE_DN:
+              sprite_ptr->behaveState = BEHAVE_STATE_UP;
+            break;       
+            case BEHAVE_STATE_UP:
+              sprite_ptr->behaveState = BEHAVE_STATE_DN;
+            break;
+          }
+        break;
       }    
     }
   }
@@ -1200,4 +1281,3 @@ void replaceBackGround(signed char left, signed char top, unsigned char width, u
     }
   }
 }
-
