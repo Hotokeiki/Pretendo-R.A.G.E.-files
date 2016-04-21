@@ -332,8 +332,433 @@ SPRITE mySprite7 = {{&sprite1 , &sprite2, &sprite3 , &sprite4, &sprite5 , &sprit
 TILE      *CurTile        = NULL;
 CHARACTER *CurCharacter   = NULL;
 
-/***************************SETUP*************************************/
+//======================= Graphics Setup Functions =================================
 
+BITMAP **GetCharBitMapArray(unsigned char charState)
+{
+    switch (charState)
+    {
+      case CHAR_STATE_ACTIVE_A:
+        return &CurCharacter->ActiveA[0]; 
+      break;
+      
+      case CHAR_STATE_ACTIVE_B:
+        return &CurCharacter->ActiveB[0]; 
+      break;      
+      
+      case CHAR_STATE_MOVE:
+        return &CurCharacter->Moving[0]; 
+      break;
+
+      default: //CHAR_STATE_STAND
+        return &CurCharacter->Standing[0];      
+      break;
+    }
+}
+
+void replaceBackGround(signed char left, signed char top, unsigned char width, unsigned char height, const BITMAP *BackGroundPtr)
+{
+  signed char X, Y;
+  unsigned char I, J;  
+  unsigned char color8;
+
+  for (I = 0; I < width; I++)
+  {
+    X = left + I;
+    if ((X >= 0) && (X < COMP_X))
+    {
+      for (J = 0; J < height; J++)  
+      {
+        Y = top + J;
+        if ((Y >= 0) && (Y < COMP_Y))
+        {
+          color8 = pgm_read_byte_near(BackGroundPtr->BMP_ptr + (X * BackGroundPtr->height) + Y);
+          drawPixel(X, Y, color8); 
+        }
+      }
+    }
+  }
+}
+
+void drawBitMap(signed char left, signed char top, const BITMAP *bmp, bool ignoreInvisible)
+{
+  signed char X, Y;
+  unsigned char I, J;  
+  unsigned char color8;
+
+  for (I = 0; I < bmp->width; I++)
+  {
+    X = left + I;
+    if ((X >= 0) && (X < COMP_X))
+    {
+      for (J = 0; J < bmp->height; J++)  
+      {
+        Y = top + J;
+        if ((Y >= 0) && (Y < COMP_Y))
+        {
+          switch(bmp->attributes & BMP_ATTR_DRAW_DIR_MASK)
+          {
+            case BMP_ATTR_DRAW_DIR_UP:
+              color8 = pgm_read_byte_near(bmp->BMP_ptr + (I * bmp->height) + J);
+            break;
+
+            case BMP_ATTR_DRAW_DIR_CW:
+              color8 = pgm_read_byte_near(bmp->BMP_ptr + (J * bmp->height) + (bmp->width - 1 - I));
+            break;
+
+            case BMP_ATTR_DRAW_DIR_DN:
+              color8 = pgm_read_byte_near(bmp->BMP_ptr + ((bmp->width - 1 - I) * bmp->height) + (bmp->height - 1 - J));
+            break;
+
+            case BMP_ATTR_DRAW_DIR_CCW:
+              color8 = pgm_read_byte_near(bmp->BMP_ptr + ((bmp->height - 1 - J) * bmp->height) + I);
+            break;
+          }
+          if ((color8 != bmp->invisible) || ignoreInvisible || ((bmp->attributes & BMP_ATTR_NO_INVISIBLE) == BMP_ATTR_NO_INVISIBLE))
+          {
+            drawPixel(X, Y, color8); 
+          }
+        }
+      }
+    }
+  }
+}
+
+void updateCharacter(signed char x_update, signed char y_update, bool ActiveA, bool ActiveB)
+{
+  bool overheadView = true;
+  unsigned char lastFacing = CurCharacter->facing;
+  unsigned char lastState = CurCharacter->charState;
+  unsigned char lastBitMap = CurCharacter->curBitMap;
+  signed char   lastLeft = CurCharacter->left;
+  signed char   lastTop = CurCharacter->top;
+  BITMAP        **lastArray = GetCharBitMapArray(CurCharacter->charState);
+  BITMAP        **curArray;
+
+  if (CurCharacter != NULL)
+  {
+    switch (CurCharacter->charState)
+    {
+      case CHAR_STATE_ACTIVE_A:
+      break;
+      
+      case CHAR_STATE_ACTIVE_B:
+      break;      
+      
+      case CHAR_STATE_MOVE:
+        if (ActiveA) CurCharacter->charState = CHAR_STATE_ACTIVE_A;
+        else if (ActiveB) CurCharacter->charState = CHAR_STATE_ACTIVE_B;
+        else if ((x_update == 0) || (overheadView && (y_update == 0))) CurCharacter->charState = CHAR_STATE_STAND;   
+      break;
+
+      default: //CHAR_STATE_STAND
+        if (ActiveA) CurCharacter->charState = CHAR_STATE_ACTIVE_A;
+        else if (ActiveB) CurCharacter->charState = CHAR_STATE_ACTIVE_B;
+        else if ((x_update != 0) || (overheadView && (y_update != 0))) CurCharacter->charState = CHAR_STATE_MOVE;             
+      break;
+    }
+
+    if (x_update > 0) CurCharacter->facing = CHAR_FACING_RT;
+    else if (x_update < 0) CurCharacter->facing = CHAR_FACING_LT;
+    else if (overheadView && (y_update > 0)) CurCharacter->facing = CHAR_FACING_UP;
+    else if (overheadView && (y_update < 0)) CurCharacter->facing = CHAR_FACING_DN;
+
+    if (CurCharacter->charState != lastState)
+    {
+      CurCharacter->curBitMap = 0;
+      CurCharacter->curUpdateDelayCount = 0;
+    }
+
+    //Update new BitMap and Count
+    CurCharacter->curUpdateDelayCount++;
+    if (CurCharacter->curUpdateDelayCount >= CurCharacter->updateDelay)
+    {
+      CurCharacter->curUpdateDelayCount = 0;
+      CurCharacter->curBitMap++;
+
+      if ((CurCharacter->curBitMap >= MAX_CHARACTER_FRAMES) || (GetCharBitMapArray(CurCharacter->charState)[CurCharacter->curBitMap] == NULL))
+      {
+        CurCharacter->curBitMap = 0;
+        if ((CurCharacter->charState == CHAR_STATE_ACTIVE_A) || (CurCharacter->charState == CHAR_STATE_ACTIVE_B))
+        {
+          if ((x_update != 0) || (overheadView && (y_update != 0))) CurCharacter->charState = CHAR_STATE_MOVE;
+          else CurCharacter->charState = CHAR_STATE_STAND; 
+        }
+      }
+    }
+
+    CurCharacter->left += x_update;
+    if (overheadView) CurCharacter->top += y_update;
+
+    curArray = GetCharBitMapArray(CurCharacter->charState);
+  
+    // redraw the newly exposed background
+    if ((lastLeft != CurCharacter->left) || (lastTop != CurCharacter->top) || (lastBitMap != CurCharacter->curBitMap) || (lastState != CurCharacter->charState))
+    {
+      replaceBackGround(lastLeft, lastTop, lastArray[lastBitMap]->width, lastArray[lastBitMap]->height, CurTile->BCKGND_ptr);
+  
+      if (CurCharacter->facing == CHAR_FACING_RT) curArray[CurCharacter->curBitMap]->attributes = BMP_ATTR_DRAW_DIR_CCW;
+      else if (CurCharacter->facing == CHAR_FACING_LT) curArray[CurCharacter->curBitMap]->attributes = BMP_ATTR_DRAW_DIR_CW;
+      else if (CurCharacter->facing == CHAR_FACING_UP) curArray[CurCharacter->curBitMap]->attributes = BMP_ATTR_DRAW_DIR_UP;
+      else if (CurCharacter->facing == CHAR_FACING_DN) curArray[CurCharacter->curBitMap]->attributes = BMP_ATTR_DRAW_DIR_DN;
+  
+      drawBitMap(CurCharacter->left, CurCharacter->top, curArray[CurCharacter->curBitMap], false);
+    }
+    
+  }
+
+}
+
+void updateSprite(SPRITE *sprite_ptr)
+{
+  signed char incX = 0;
+  signed char incY = 0;
+  bool        stopReached = false;
+  bool        wrapAround = false;
+  unsigned char oldBitMap = sprite_ptr->curBitMap;
+  unsigned char oldLeft = sprite_ptr->left;
+  unsigned char oldTop = sprite_ptr->top;
+  
+  //Update new BitMap and Count
+  sprite_ptr->curUpdateDelayCount++;
+  if (sprite_ptr->curUpdateDelayCount >= sprite_ptr->updateDelay)
+  {
+    sprite_ptr->curUpdateDelayCount = 0;
+    sprite_ptr->curBitMap++;
+    if ((sprite_ptr->curBitMap >= MAX_SPRITE_FRAMES) || (sprite_ptr->Array[sprite_ptr->curBitMap] == NULL))
+    {
+      sprite_ptr->curBitMap = 0;
+    }
+  }
+
+  //Update movementy stuff
+  sprite_ptr->curMovementDelayCount++;
+  if (sprite_ptr->curMovementDelayCount >= sprite_ptr->movementDelay)
+  {
+    sprite_ptr->curMovementDelayCount = 0;
+    
+    //===================================================== CHOOSE BEHAVIOR =====================================================
+    // we need to move, so look at behavior
+    switch(sprite_ptr->behavior)
+    {
+      case BEHAVE_DRIFT_RT:
+        incX = 1;
+        wrapAround = true;
+        break;
+      
+      case BEHAVE_DRIFT_LT:
+        incX = -1;
+        wrapAround = true;
+      break;
+      
+      case BEHAVE_DRIFT_UP:
+        incY = 1;
+        wrapAround = true;
+      break;
+      
+      case BEHAVE_DRIFT_DN:
+        incY = -1;   
+        wrapAround = true;
+      break;
+      
+      case BEHAVE_CIRCLE_CW:
+      case BEHAVE_CIRCLE_CCW:      
+        switch(sprite_ptr->behaveState)
+        {
+          case BEHAVE_STATE_LT:
+            incX = -1;
+          break;
+          case BEHAVE_STATE_UP:
+            incY = 1;
+          break;
+          case BEHAVE_STATE_DN:
+            incY = -1;
+          break;
+          default: //BEHAVE_STATE_INIT, BEHAVE_STATE_RT
+            sprite_ptr->behaveState = BEHAVE_STATE_RT;
+            incX = 1;
+          break;
+        }
+      break;
+      
+       case BEHAVE_BOUNCE_HORIZ:
+        switch(sprite_ptr->behaveState)
+        {
+          case BEHAVE_STATE_LT:
+            incX = -1;
+          break;
+          default: //BEHAVE_STATE_INIT, BEHAVE_STATE_RT
+            sprite_ptr->behaveState = BEHAVE_STATE_RT;
+            incX = 1;
+          break;
+        }
+        break;
+
+      case BEHAVE_BOUNCE_VERT:
+        switch(sprite_ptr->behaveState)
+        {
+          case BEHAVE_STATE_UP:
+            incY = 1;
+          break;          
+          default: //BEHAVE_STATE_INIT, BEHAVE_STATE_DN
+            sprite_ptr->behaveState = BEHAVE_STATE_DN;
+            incY = -1;
+          break;
+        }
+      break;
+      
+      default:  //BEHAVE_NO_MOVE:
+        //do nothing
+      break;      
+    }
+
+    //===================================================== DO ACTUAL MOVEMENT =====================================================
+    sprite_ptr->left += incX;
+    if (sprite_ptr->left < sprite_ptr->minX) 
+    {
+      if (wrapAround) 
+      {
+        sprite_ptr->left = sprite_ptr->maxX;  
+      }
+      else 
+      {
+        sprite_ptr->left = sprite_ptr->minX;  
+      }
+      stopReached = true; 
+    }
+    
+    if (sprite_ptr->left > sprite_ptr->maxX)
+    {
+      if (wrapAround) 
+      {
+        sprite_ptr->left = sprite_ptr->minX;  
+      }   
+      else          
+      {
+        sprite_ptr->left = sprite_ptr->maxX;  
+      }
+      stopReached = true; 
+    }
+
+    sprite_ptr->top -= incY;  //Bigger Y values are on the bottom, subtracting makes it seem like they are on the top
+    if (sprite_ptr->top < sprite_ptr->minY) 
+    {
+      if (wrapAround) 
+      {
+        sprite_ptr->top = sprite_ptr->maxY;   
+      }
+      else 
+      {
+        sprite_ptr->top = sprite_ptr->minY;
+      }
+      stopReached = true; 
+    }
+    
+    if (sprite_ptr->top > sprite_ptr->maxY) 
+    {
+      if (wrapAround) 
+      {
+        sprite_ptr->top = sprite_ptr->minY; 
+      }
+      else 
+      {
+        sprite_ptr->top = sprite_ptr->maxY;  
+      }
+      stopReached = true; 
+    }
+
+    //===================================================== UPDATE BEHAVIOR =====================================================
+    if (stopReached)
+    {
+      // we need to move, so look at behavior
+      switch(sprite_ptr->behavior)
+      {
+        case BEHAVE_CIRCLE_CW:
+          switch(sprite_ptr->behaveState)
+          {
+            case BEHAVE_STATE_RT:
+              sprite_ptr->behaveState = BEHAVE_STATE_DN;
+            break;
+            case BEHAVE_STATE_DN:
+              sprite_ptr->behaveState = BEHAVE_STATE_LT;
+            break;            
+            case BEHAVE_STATE_LT:
+              sprite_ptr->behaveState = BEHAVE_STATE_UP;
+            break;
+            case BEHAVE_STATE_UP:
+              sprite_ptr->behaveState = BEHAVE_STATE_RT;
+            break;
+          }
+        break;
+
+        case BEHAVE_CIRCLE_CCW:      
+          switch(sprite_ptr->behaveState)
+          {
+            case BEHAVE_STATE_LT:
+              sprite_ptr->behaveState = BEHAVE_STATE_DN;
+            break;
+            case BEHAVE_STATE_DN:
+              sprite_ptr->behaveState = BEHAVE_STATE_RT;
+            break;
+            case BEHAVE_STATE_RT:
+              sprite_ptr->behaveState = BEHAVE_STATE_UP;
+            break;            
+            case BEHAVE_STATE_UP:
+              sprite_ptr->behaveState = BEHAVE_STATE_LT;
+            break;
+          }
+        break;
+        
+        case BEHAVE_BOUNCE_HORIZ:      
+          switch(sprite_ptr->behaveState)
+          {
+            case BEHAVE_STATE_LT:
+              sprite_ptr->behaveState = BEHAVE_STATE_RT;
+            break;
+            case BEHAVE_STATE_RT:
+              sprite_ptr->behaveState = BEHAVE_STATE_LT;
+            break;            
+          }
+        break;
+
+        case BEHAVE_BOUNCE_VERT:      
+          switch(sprite_ptr->behaveState)
+          {
+            case BEHAVE_STATE_DN:
+              sprite_ptr->behaveState = BEHAVE_STATE_UP;
+            break;       
+            case BEHAVE_STATE_UP:
+              sprite_ptr->behaveState = BEHAVE_STATE_DN;
+            break;
+          }
+        break;
+      }    
+    }
+  }
+  // redraw the newly exposed background
+  if ((oldLeft != sprite_ptr->left) || (oldTop != sprite_ptr->top) || (oldBitMap != sprite_ptr->curBitMap))
+  {
+    replaceBackGround(oldLeft, oldTop, sprite_ptr->Array[oldBitMap]->width, sprite_ptr->Array[oldBitMap]->height, CurTile->BCKGND_ptr);
+
+    drawBitMap(sprite_ptr->left, sprite_ptr->top, sprite_ptr->Array[sprite_ptr->curBitMap], false);
+  }
+}
+
+void setCharacter(CHARACTER *character, signed char top, signed char left)
+{
+  character->top = top;
+  character->left = left;
+  CurCharacter = character;
+}
+
+void newTile(TILE *tile)
+{
+  CurTile = tile;
+  drawBitMap(0, 0, tile->BCKGND_ptr, true);
+  setCharacter(&MyCharacter, 10, 37);
+}
+
+/***************************SETUP*************************************/
 void setup(void) {
   // CHANGE THIS: Put pins on one port, and use PORT[X] = [binary number]
   pinMode(b_up, INPUT);
@@ -440,7 +865,7 @@ ISR(TIMER0_COMPA_vect)
 }
 
 
-
+/*
 BITMAP **GetCharBitMapArray(unsigned char charState)
 {
     switch (charState)
@@ -864,4 +1289,4 @@ void replaceBackGround(signed char left, signed char top, unsigned char width, u
       }
     }
   }
-}
+*/
